@@ -21,7 +21,6 @@
                         <a href="<?php echo home_url('/manga/'); ?>" class="btn btn-secondary">Lihat Semua Manga</a>
                     </div>
                     
-                    <!-- Search Form -->
                     <div class="error-search">
                         <h3>Atau cari manga yang Anda inginkan:</h3>
                         <form role="search" method="get" action="<?php echo home_url('/'); ?>" class="search-form-404">
@@ -33,7 +32,6 @@
                 </div>
             </div>
             
-            <!-- Suggested Content -->
             <div class="suggested-content">
                 <h3>Manga Populer</h3>
                 <div class="manga-grid">
@@ -56,7 +54,6 @@
                 </div>
             </div>
             
-            <!-- Recent Updates -->
             <div class="recent-updates-404">
                 <h3>Update Terbaru</h3>
                 <ul class="recent-list">
@@ -71,17 +68,20 @@
                     if ($recent_chapters->have_posts()):
                         while ($recent_chapters->have_posts()): $recent_chapters->the_post();
                             $manga_id = get_post_meta(get_the_ID(), 'manga_id', true);
-                            $manga = get_post($manga_id);
-                            $chapter_number = get_post_meta(get_the_ID(), 'chapter_number', true);
+                            if ($manga_id): // Hanya tampilkan jika ada manga induk
+                                $manga = get_post($manga_id);
+                                $chapter_number = get_post_meta(get_the_ID(), 'chapter_number', true);
+                                $chapter_url = get_permalink(get_the_ID()); // get_permalink() akan difilter
                     ?>
                         <li>
-                            <a href="<?php echo get_chapter_url($manga->post_name, get_post_field('post_name')); ?>">
-                                <span class="manga-title"><?php echo $manga->post_title; ?></span>
-                                <span class="chapter-number">Chapter <?php echo $chapter_number; ?></span>
+                            <a href="<?php echo esc_url($chapter_url); ?>">
+                                <span class="manga-title"><?php echo esc_html($manga->post_title); ?></span>
+                                <span class="chapter-number">Chapter <?php echo esc_html($chapter_number); ?></span>
                                 <span class="update-time"><?php echo human_time_diff(get_the_time('U'), current_time('timestamp')); ?> lalu</span>
                             </a>
                         </li>
                     <?php
+                            endif;
                         endwhile;
                         wp_reset_postdata();
                     endif;

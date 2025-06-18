@@ -68,13 +68,13 @@ function create_manga_post_type() {
         ),
         'public' => true,
         'has_archive' => true,
-        'supports' => array('title', 'editor', 'thumbnail', 'custom-fields'),
+        'supports' => array('title', 'editor', 'thumbnail', 'custom-fields', 'comments'),
         'menu_icon' => 'dashicons-book-alt',
         'rewrite' => array('slug' => 'manga'),
         'show_in_rest' => true
     ));
     
-    // Register Chapter post type
+    // Register Chapter post type with corrected arguments
     register_post_type('chapter', array(
         'labels' => array(
             'name' => 'Chapters',
@@ -88,11 +88,17 @@ function create_manga_post_type() {
             'not_found' => 'No chapters found',
             'not_found_in_trash' => 'No chapters found in trash'
         ),
-        'public' => true,
-        'supports' => array('title', 'editor', 'custom-fields'),
-        'menu_icon' => 'dashicons-media-document',
-        'rewrite' => array('slug' => 'chapter'),
-        'show_in_rest' => true
+        'public'              => false,  // Tidak dapat diakses publik secara langsung
+        'publicly_queryable'  => false,  // Tidak bisa di-query langsung dari URL
+        'show_ui'             => true,   // Tetap tampil di menu admin
+        'show_in_menu'        => true,   // Pastikan menu tetap ada
+        'show_in_nav_menus'   => false,  // Jangan tampilkan di pilihan menu navigasi
+        'exclude_from_search' => true,   // Jangan ikutkan dalam hasil pencarian situs
+        'has_archive'         => false,  // Tidak punya halaman arsip sendiri
+        'rewrite'             => false,  // PENTING: Matikan pembuatan aturan URL default
+        'supports'            => array('title', 'editor', 'custom-fields', 'comments'),
+        'menu_icon'           => 'dashicons-media-document',
+        'show_in_rest'        => true,
     ));
 }
 add_action('init', 'create_manga_post_type');
@@ -103,16 +109,7 @@ function create_manga_taxonomies() {
     register_taxonomy('manga_genre', 'manga', array(
         'labels' => array(
             'name' => 'Genres',
-            'singular_name' => 'Genre',
-            'search_items' => 'Search Genres',
-            'all_items' => 'All Genres',
-            'parent_item' => 'Parent Genre',
-            'parent_item_colon' => 'Parent Genre:',
-            'edit_item' => 'Edit Genre',
-            'update_item' => 'Update Genre',
-            'add_new_item' => 'Add New Genre',
-            'new_item_name' => 'New Genre Name',
-            'menu_name' => 'Genres'
+            'singular_name' => 'Genre'
         ),
         'hierarchical' => true,
         'public' => true,
@@ -124,14 +121,7 @@ function create_manga_taxonomies() {
     register_taxonomy('manga_status', 'manga', array(
         'labels' => array(
             'name' => 'Status',
-            'singular_name' => 'Status',
-            'search_items' => 'Search Status',
-            'all_items' => 'All Status',
-            'edit_item' => 'Edit Status',
-            'update_item' => 'Update Status',
-            'add_new_item' => 'Add New Status',
-            'new_item_name' => 'New Status Name',
-            'menu_name' => 'Status'
+            'singular_name' => 'Status'
         ),
         'hierarchical' => true,
         'public' => true,
@@ -142,24 +132,15 @@ add_action('init', 'create_manga_taxonomies');
 
 // Custom rewrite rules untuk manga dan chapter
 function manga_rewrite_rules() {
-    // Manga chapter reader dengan page number
     add_rewrite_rule(
         '^manga/([^/]+)/chapter/([^/]+)/page/([0-9]+)/?$',
         'index.php?post_type=manga&name=$matches[1]&chapter=$matches[2]&page_num=$matches[3]',
         'top'
     );
     
-    // Manga chapter reader
     add_rewrite_rule(
         '^manga/([^/]+)/chapter/([^/]+)/?$',
         'index.php?post_type=manga&name=$matches[1]&chapter=$matches[2]',
-        'top'
-    );
-    
-    // Manga info page (default single manga)
-    add_rewrite_rule(
-        '^manga/([^/]+)/?$',
-        'index.php?post_type=manga&name=$matches[1]',
         'top'
     );
 }
@@ -173,21 +154,21 @@ function manga_query_vars($vars) {
 }
 add_filter('query_vars', 'manga_query_vars');
 
-// Template redirect untuk handling custom URLs
-function manga_template_redirect() {
-    global $wp_query;
-    
-    if (get_query_var('chapter') && is_singular('manga')) {
-        // Set proper template for chapter reading
-        $wp_query->is_singular = true;
-        $wp_query->is_single = true;
-        
-        // Load single-manga.php template
-        include(get_template_directory() . '/single-manga.php');
-        exit;
+
+// Filter the permalink untuk memastikan URL Chapter selalu benar
+function mangastream_custom_chapter_link($post_link, $post) {
+    if ($post->post_type == 'chapter') {
+        $manga_id = get_post_meta($post->ID, 'manga_id', true);
+        if ($manga_id) {
+            $manga = get_post($manga_id);
+            if ($manga) {
+                return home_url('/manga/' . $manga->post_name . '/chapter/' . $post->post_name . '/');
+            }
+        }
     }
+    return $post_link;
 }
-add_action('template_redirect', 'manga_template_redirect');
+add_filter('post_type_link', 'mangastream_custom_chapter_link', 10, 2);
 
 // Flush rewrite rules on theme activation
 function manga_flush_rewrite_rules() {
@@ -197,39 +178,6 @@ function manga_flush_rewrite_rules() {
     flush_rewrite_rules();
 }
 add_action('after_switch_theme', 'manga_flush_rewrite_rules');
-
-// AJAX search functionality
-function mangastream_ajax_search() {
-    check_ajax_referer('mangastream_nonce', 'nonce');
-    
-    $search_term = sanitize_text_field($_POST['search_term']);
-    
-    $args = array(
-        'post_type' => 'manga',
-        's' => $search_term,
-        'posts_per_page' => 10,
-        'post_status' => 'publish'
-    );
-    
-    $query = new WP_Query($args);
-    $results = array();
-    
-    if ($query->have_posts()) {
-        while ($query->have_posts()) {
-            $query->the_post();
-            $results[] = array(
-                'title' => get_the_title(),
-                'url' => get_permalink(),
-                'thumbnail' => get_the_post_thumbnail_url(get_the_ID(), 'manga-thumbnail') ?: ''
-            );
-        }
-    }
-    
-    wp_reset_postdata();
-    wp_send_json($results);
-}
-add_action('wp_ajax_mangastream_search', 'mangastream_ajax_search');
-add_action('wp_ajax_nopriv_mangastream_search', 'mangastream_ajax_search');
 
 // Comment callback function
 function mangastream_comment_callback($comment, $args, $depth) {
@@ -294,5 +242,7 @@ require_once get_template_directory() . '/inc/template-functions.php';
 require_once get_template_directory() . '/inc/security.php';
 require_once get_template_directory() . '/inc/ajax-handlers.php';
 require_once get_template_directory() . '/inc/view-counter.php';
-require_once get_template_directory() . '/admin/manga-meta-boxes.php';
+if (is_admin()) {
+    require_once get_template_directory() . '/admin/manga-meta-boxes.php';
+}
 ?>

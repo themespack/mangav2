@@ -1,4 +1,6 @@
 <?php
+// File: inc/view-counter.php
+
 // View counter functionality
 
 function track_manga_views() {
@@ -26,7 +28,7 @@ function track_manga_views() {
         }
     }
 }
-add_action('wp_head', 'track_manga_views');
+// add_action('wp_head', 'track_manga_views'); // <-- BARIS INI DIHAPUS ATAU DIKOMENTARI
 
 function get_client_ip() {
     $ip = '';

@@ -109,18 +109,23 @@ class Latest_Chapters_Widget extends WP_Widget {
         if ($chapters_query->have_posts()):
             echo '<ul class="latest-chapters-list">';
             while ($chapters_query->have_posts()): $chapters_query->the_post();
-                $manga_id = get_post_meta(get_the_ID(), 'manga_id', true);
-                $manga = get_post($manga_id);
-                $chapter_number = get_post_meta(get_the_ID(), 'chapter_number', true);
-        ?>
-            <li class="chapter-item">
-                <a href="<?php echo get_chapter_url($manga->post_name, get_post_field('post_name')); ?>">
-                    <span class="manga-title"><?php echo $manga->post_title; ?></span>
-                    <span class="chapter-number">Ch. <?php echo $chapter_number; ?></span>
-                </a>
-                <span class="chapter-time"><?php echo human_time_diff(get_the_time('U'), current_time('timestamp')); ?> lalu</span>
-            </li>
-        <?php
+                $chapter_id = get_the_ID();
+                $manga_id = get_post_meta($chapter_id, 'manga_id', true); // Mengambil manga_id dari meta chapter
+                
+                if ($manga_id) { // Hanya tampilkan jika chapter memiliki manga induk
+                    $manga = get_post($manga_id);
+                    $chapter_number = get_post_meta($chapter_id, 'chapter_number', true);
+                    $chapter_url = get_permalink($chapter_id); // get_permalink() akan difilter oleh fungsi di functions.php
+            ?>
+                <li class="chapter-item">
+                    <a href="<?php echo esc_url($chapter_url); ?>">
+                        <span class="manga-title"><?php echo esc_html($manga->post_title); ?></span>
+                        <span class="chapter-number">Ch. <?php echo esc_html($chapter_number); ?></span>
+                    </a>
+                    <span class="chapter-time"><?php echo human_time_diff(get_the_time('U'), current_time('timestamp')); ?> lalu</span>
+                </li>
+            <?php
+                }
             endwhile;
             echo '</ul>';
             wp_reset_postdata();

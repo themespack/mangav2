@@ -1,24 +1,25 @@
+// File: js/admin.js
+
 jQuery(document).ready(function($) {
     // Manga admin enhancements
     
     // Chapter management
     $('#add-chapter-btn').click(function() {
-        const chapterTemplate = `
-            <div class="chapter-row">
-                <input type="text" name="chapter_numbers[]" placeholder="Chapter Number" class="chapter-number">
-                <input type="text" name="chapter_titles[]" placeholder="Chapter Title" class="chapter-title">
-                <input type="url" name="chapter_urls[]" placeholder="Chapter URL" class="chapter-url">
-                <button type="button" class="remove-chapter">Remove</button>
-            </div>
-        `;
-        $('#chapters-container').append(chapterTemplate);
+        // Ambil HTML dari template yang sudah disiapkan di PHP
+        const chapterTemplate = $('.chapter-template').html(); 
+        
+        // Tambahkan template baru ke dalam daftar chapter
+        $('.chapters-list').append(chapterTemplate); 
+        
+        // Hapus pesan "Belum ada chapter" jika ada
+        $('.no-chapters').remove(); 
     });
     
     $(document).on('click', '.remove-chapter', function() {
         $(this).closest('.chapter-row').remove();
     });
     
-    // Image upload for manga pages
+    // Image upload for manga pages (kode lainnya tetap sama)
     $('.upload-manga-pages').click(function(e) {
         e.preventDefault();
         
